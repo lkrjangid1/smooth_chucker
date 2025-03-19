@@ -29,3 +29,12 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+
+screenshots:
+  - description: 'Home'
+    path: screenshots/1.png
+  - description: 'Search and filter'
+    path: screenshots/2.png
+  - description: 'Details page'
+    path: screenshots/3.png
