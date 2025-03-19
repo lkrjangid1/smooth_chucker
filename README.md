@@ -4,6 +4,11 @@ An enhanced HTTP requests inspector for Flutter applications inspired by [Chucke
 
 Smooth Chucker inspects HTTP(S) requests and responses in your Flutter app. It works as an interceptor for popular HTTP client libraries and stores network requests and responses in local storage, providing a Material 3 UI for inspecting and sharing content.
 
+<img src="https://github.com/user-attachments/assets/2db9157d-7b79-4711-abbd-d89b199478de" width="180" height="350">
+<img src="https://github.com/user-attachments/assets/3e7cc950-ca4a-45b2-ac18-cd846328ac5c" width="180" height="350">
+<img src="https://github.com/user-attachments/assets/edb7642f-6c91-48f6-8518-de5aa603e32b" width="180" height="350">
+
+
 ## Features
 
 - 🚀 **Isolate Support**: Background processing to prevent UI freezes while handling network requests
