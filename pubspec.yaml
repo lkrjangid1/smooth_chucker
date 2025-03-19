@@ -32,9 +32,9 @@ flutter:
 
 
 screenshots:
-  - description: 'Home'
+  - description: 'Home page ui'
     path: screenshots/1.png
-  - description: 'Search and filter'
+  - description: 'Search and filter page'
     path: screenshots/2.png
-  - description: 'Details page'
+  - description: 'Details page ui'
     path: screenshots/3.png
