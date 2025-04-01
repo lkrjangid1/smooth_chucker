@@ -10,14 +10,30 @@ import 'settings_screen.dart';
 
 /// Screen showing the list of API requests
 class ApiListScreen extends StatefulWidget {
-  /// Constructor
   const ApiListScreen({super.key});
 
   @override
   State<ApiListScreen> createState() => _ApiListScreenState();
 }
 
-class _ApiListScreenState extends State<ApiListScreen>
+class _ApiListScreenState extends State<ApiListScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider.value(
+      value: SmoothChuckerProvider(),
+      child: ApiListScreenWidget(),
+    );
+  }
+}
+
+class ApiListScreenWidget extends StatefulWidget {
+  const ApiListScreenWidget({super.key});
+
+  @override
+  State<ApiListScreenWidget> createState() => _ApiListScreenWidgetState();
+}
+
+class _ApiListScreenWidgetState extends State<ApiListScreenWidget>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();

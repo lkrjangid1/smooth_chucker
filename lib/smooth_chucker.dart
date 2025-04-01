@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import 'src/ui/notification/notification_service.dart';
 import 'src/ui/screens/api_list_screen.dart';
-import 'src/ui/themes/theme_data.dart';
 import 'src/utils/chucker_utils.dart';
 
 export 'src/interceptors/chopper_interceptor.dart';
@@ -35,16 +34,6 @@ class SmoothChucker {
         builder: (context) => const ApiListScreen(),
       ),
     );
-  }
-
-  /// Get the theme for SmoothChucker
-  static ThemeData getLightTheme([Color? primaryColor, Color? secondaryColor]) {
-    return SmoothChuckerThemeData.getLightTheme(primaryColor, secondaryColor);
-  }
-
-  /// Get the dark theme for SmoothChucker
-  static ThemeData getDarkTheme([Color? primaryColor, Color? secondaryColor]) {
-    return SmoothChuckerThemeData.getDarkTheme(primaryColor, secondaryColor);
   }
 
   /// Initialize SmoothChucker with the provided overlay state

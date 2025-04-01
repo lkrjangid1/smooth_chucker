@@ -7,9 +7,21 @@ import '../notification/notification_service.dart';
 import '../widgets/color_picker_dialog.dart';
 
 /// Settings screen for SmoothChucker
+
 class SettingsScreen extends StatelessWidget {
-  /// Constructor
   const SettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider.value(
+      value: SmoothChuckerProvider(),
+      child: SettingsScreenWidget(),
+    );
+  }
+}
+
+class SettingsScreenWidget extends StatelessWidget {
+  const SettingsScreenWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -22,8 +34,6 @@ class SettingsScreen extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _buildThemeSection(context, provider),
-              const Divider(height: 32),
               _buildNotificationSection(context, provider),
               const Divider(height: 32),
               _buildStorageSection(context, provider),
@@ -33,93 +43,6 @@ class SettingsScreen extends StatelessWidget {
           );
         },
       ),
-    );
-  }
-
-  /// Build theme settings section
-  Widget _buildThemeSection(
-      BuildContext context, SmoothChuckerProvider provider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Theme',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        ListTile(
-          title: const Text('Theme Mode'),
-          subtitle: Text(_getThemeModeText(provider.themeMode)),
-          trailing: DropdownButton<ThemeMode>(
-            value: provider.themeMode,
-            onChanged: (value) {
-              if (value != null) {
-                provider.setThemeMode(value);
-              }
-            },
-            items: const [
-              DropdownMenuItem(
-                value: ThemeMode.system,
-                child: Text('System'),
-              ),
-              DropdownMenuItem(
-                value: ThemeMode.light,
-                child: Text('Light'),
-              ),
-              DropdownMenuItem(
-                value: ThemeMode.dark,
-                child: Text('Dark'),
-              ),
-            ],
-            underline: const SizedBox(), // Remove underline
-          ),
-        ),
-        ListTile(
-          title: const Text('Primary Color'),
-          subtitle: const Text('The main color used in the app'),
-          trailing: Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              color: provider.primaryColor,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.grey),
-            ),
-          ),
-          onTap: () {
-            _showColorPickerDialog(
-              context,
-              'Primary Color',
-              provider.primaryColor,
-              (color) => provider.setPrimaryColor(color),
-            );
-          },
-        ),
-        ListTile(
-          title: const Text('Secondary Color'),
-          subtitle: const Text('The accent color used in the app'),
-          trailing: Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              color: provider.secondaryColor,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.grey),
-            ),
-          ),
-          onTap: () {
-            _showColorPickerDialog(
-              context,
-              'Secondary Color',
-              provider.secondaryColor,
-              (color) => provider.setSecondaryColor(color),
-            );
-          },
-        ),
-      ],
     );
   }
 
@@ -298,10 +221,6 @@ class SettingsScreen extends StatelessWidget {
           subtitle: Text('An HTTP requests inspector for Flutter'),
         ),
         const ListTile(
-          title: Text('Version'),
-          subtitle: Text('1.0.0'),
-        ),
-        const ListTile(
           title: Text('Features'),
           subtitle: Text('• Material 3 Design\n'
               '• Isolate support for background processing\n'
@@ -369,17 +288,5 @@ class SettingsScreen extends StatelessWidget {
         );
       },
     );
-  }
-
-  /// Get text representation of theme mode
-  String _getThemeModeText(ThemeMode themeMode) {
-    switch (themeMode) {
-      case ThemeMode.system:
-        return 'Follow system settings';
-      case ThemeMode.light:
-        return 'Light theme';
-      case ThemeMode.dark:
-        return 'Dark theme';
-    }
   }
 }

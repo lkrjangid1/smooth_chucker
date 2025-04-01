@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
+import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:chopper/chopper.dart';
@@ -23,12 +24,14 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ApiDemoProvider()),
-        ChangeNotifierProvider(create: (_) => SmoothChuckerProvider()),
       ],
       child: MaterialApp(
         title: 'Smooth Chucker Demo',
-        theme: SmoothChucker.getLightTheme(Colors.indigo, Colors.teal),
-        darkTheme: SmoothChucker.getDarkTheme(Colors.indigo, Colors.teal),
+        // The Mandy red, light theme.
+        theme: FlexThemeData.light(scheme: FlexScheme.mandyRed),
+        // The Mandy red, dark theme.
+        darkTheme: FlexThemeData.dark(scheme: FlexScheme.mandyRed),
+        // Use dark or light theme based on system setting.
         themeMode: ThemeMode.system,
         navigatorObservers: [SmoothChucker.navigatorObserver],
         home: const MyHomePage(),

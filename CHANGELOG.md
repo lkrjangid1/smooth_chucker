@@ -2,6 +2,11 @@
 
 All notable changes to the "Smooth Chucker" package will be documented in this file.
 
+## 0.0.2
+
+### Fixed
+- Optimize code
+
 ## 0.0.1
 
 ### Added
