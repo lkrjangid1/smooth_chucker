@@ -80,7 +80,7 @@ class ApiResponse {
         searchKeywords: _parseStringList(json['searchKeywords']),
       );
 
-  /// Helper function to parse JSON strings into a Map<String, String>
+  /// Helper function to parse JSON strings into a Map
   static Map<String, String> _parseMap(dynamic jsonString) {
     if (jsonString is String && jsonString.isNotEmpty && jsonString != '{}') {
       try {
@@ -147,7 +147,7 @@ class ApiResponse {
   final String? contentType;
 
   /// Request headers
-  /// Headers parsed as a Map<String, String>
+  /// Headers parsed as a Map
   final Map<String, dynamic> headers;
 
   /// Timeout in milliseconds for sending data
@@ -160,7 +160,7 @@ class ApiResponse {
   final int receiveTimeout;
 
   /// Request query params
-  /// Query parameters parsed as a Map<String, String>
+  /// Query parameters parsed as a Map
   final Map<String, dynamic> queryParameters;
 
   /// Timeout in milliseconds for making connection
