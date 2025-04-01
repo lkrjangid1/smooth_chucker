@@ -128,16 +128,6 @@ void main() {
 }
 ```
 
-### Custom Theming
-
-```dart
-MaterialApp(
-  theme: SmoothChucker.getLightTheme(Colors.purple, Colors.amber),
-  darkTheme: SmoothChucker.getDarkTheme(Colors.purple, Colors.amber),
-  // ...
-)
-```
-
 ### API Name and Search Keywords
 
 When using Dio, you can add custom API names and search keywords:

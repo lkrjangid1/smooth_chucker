@@ -1,6 +1,6 @@
 name: smooth_chucker
 description: An HTTP requests inspector with isolate support for better performance. Inspects HTTP(S) requests/responses in your app with Material 3 UI and advanced search capabilities.
-version: 0.0.2
+version: 0.0.3
 homepage: https://github.com/lkrjangid1/smooth_chucker
 
 environment:
