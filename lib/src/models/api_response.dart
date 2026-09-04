@@ -312,6 +312,10 @@ Send Timeout: $sendTimeout ms
 Client Library: $clientLibrary
 API Name: $apiName
 
+***************** cURL *****************
+
+${toCurl()}
+
 ***************** Request *****************
 
 $prettyJsonRequest
