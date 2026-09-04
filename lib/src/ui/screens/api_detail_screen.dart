@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../models/api_response.dart';
 import '../../providers/chucker_provider.dart';
 import '../../utils/chucker_utils.dart';
+import '../widgets/body_search.dart';
 import '../widgets/json_viewer_panel.dart';
 import '../widgets/key_value_widget.dart';
 
@@ -30,6 +31,28 @@ class _ApiDetailScreenState extends State<ApiDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  /// Controller of the response search field
+  final TextEditingController _responseSearchController =
+      TextEditingController();
+
+  /// Focus node of the response search field
+  final FocusNode _responseSearchFocusNode = FocusNode();
+
+  /// Key attached to the currently selected match in the response body
+  final GlobalKey _currentMatchKey = GlobalKey();
+
+  /// Text representation of the response body, used for searching
+  late final String _responseBodyText = _buildResponseBodyText();
+
+  /// Whether the response search bar is shown
+  bool _isResponseSearchVisible = false;
+
+  /// Matches of the current query inside [_responseBodyText]
+  List<TextMatch> _responseMatches = const [];
+
+  /// Index in [_responseMatches] of the currently selected match
+  int _currentMatchIndex = 0;
+
   @override
   void initState() {
     super.initState();
@@ -39,6 +62,8 @@ class _ApiDetailScreenState extends State<ApiDetailScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _responseSearchController.dispose();
+    _responseSearchFocusNode.dispose();
     super.dispose();
   }
 
@@ -325,23 +350,140 @@ class _ApiDetailScreenState extends State<ApiDetailScreen>
 
   /// Build the response tab
   Widget _buildResponseTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Response Body',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+    return Column(
+      children: [
+        if (_isResponseSearchVisible)
+          BodySearchBar(
+            controller: _responseSearchController,
+            focusNode: _responseSearchFocusNode,
+            matchCount: _responseMatches.length,
+            currentMatchIndex: _currentMatchIndex,
+            onChanged: _onResponseSearchChanged,
+            onPrevious: () => _goToMatch(-1),
+            onNext: () => _goToMatch(1),
+            onClose: _closeResponseSearch,
+            hintText: 'Search in response',
+          ),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'Response Body',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (!_isResponseSearchVisible &&
+                        _responseBodyText.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.search),
+                        tooltip: 'Search in response',
+                        onPressed: _openResponseSearch,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                _buildResponseBodyWidget(),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          _buildResponseBodyWidget(),
-        ],
-      ),
+        ),
+      ],
     );
+  }
+
+  /// Text representation of the response body, matching what the response tab
+  /// renders in text mode
+  String _buildResponseBodyText() {
+    final body = widget.apiResponse.body;
+    if (body == null) {
+      return '';
+    }
+
+    if (body is Map || body is List) {
+      return JsonViewerPanel.prettyJson(body);
+    }
+
+    if (body is String) {
+      if (SmoothChuckerUtils.isValidJson(body)) {
+        try {
+          return JsonViewerPanel.prettyJson(jsonDecode(body));
+        } catch (e) {
+          // Fall back to showing as string
+        }
+      }
+      return body;
+    }
+
+    return body.toString();
+  }
+
+  /// Show the response search bar
+  void _openResponseSearch() {
+    setState(() {
+      _isResponseSearchVisible = true;
+    });
+    _responseSearchFocusNode.requestFocus();
+  }
+
+  /// Hide the response search bar and drop the current query
+  void _closeResponseSearch() {
+    _responseSearchController.clear();
+    _responseSearchFocusNode.unfocus();
+    setState(() {
+      _isResponseSearchVisible = false;
+      _responseMatches = const [];
+      _currentMatchIndex = 0;
+    });
+  }
+
+  /// Recompute matches when the response query changes
+  void _onResponseSearchChanged(String query) {
+    setState(() {
+      _responseMatches = findTextMatches(_responseBodyText, query);
+      _currentMatchIndex = 0;
+    });
+
+    if (_responseMatches.isNotEmpty) {
+      _scrollToCurrentMatch();
+    }
+  }
+
+  /// Move the selection [delta] matches forward, wrapping around
+  void _goToMatch(int delta) {
+    if (_responseMatches.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _currentMatchIndex =
+          (_currentMatchIndex + delta) % _responseMatches.length;
+    });
+    _scrollToCurrentMatch();
+  }
+
+  /// Scroll the response body so the selected match is visible
+  void _scrollToCurrentMatch() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final matchContext = _currentMatchKey.currentContext;
+      if (matchContext == null) {
+        return;
+      }
+
+      Scrollable.ensureVisible(
+        matchContext,
+        alignment: 0.3,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+      );
+    });
   }
 
   /// Build the headers tab
@@ -488,19 +630,12 @@ class _ApiDetailScreenState extends State<ApiDetailScreen>
 
     // JSON response
     if (widget.apiResponse.body is Map || widget.apiResponse.body is List) {
-      return JsonViewerPanel(
-        jsonData: widget.apiResponse.body,
-        title: 'Response Body',
-      );
+      return _buildResponseJsonPanel(widget.apiResponse.body);
     } else if (widget.apiResponse.body is String) {
       final responseString = widget.apiResponse.body as String;
       if (SmoothChuckerUtils.isValidJson(responseString)) {
         try {
-          final jsonData = jsonDecode(responseString);
-          return JsonViewerPanel(
-            jsonData: jsonData,
-            title: 'Response Body',
-          );
+          return _buildResponseJsonPanel(jsonDecode(responseString));
         } catch (e) {
           // Fall back to showing as string
         }
@@ -528,7 +663,14 @@ class _ApiDetailScreenState extends State<ApiDetailScreen>
                   ),
                 ],
               ),
-              SelectableText(responseString),
+              SelectionArea(
+                child: HighlightedText(
+                  text: responseString,
+                  matches: _responseMatches,
+                  currentMatchIndex: _currentMatchIndex,
+                  currentMatchKey: _currentMatchKey,
+                ),
+              ),
             ],
           ),
         ),
@@ -538,8 +680,27 @@ class _ApiDetailScreenState extends State<ApiDetailScreen>
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Text(widget.apiResponse.body.toString()),
+        child: SelectionArea(
+          child: HighlightedText(
+            text: widget.apiResponse.body.toString(),
+            matches: _responseMatches,
+            currentMatchIndex: _currentMatchIndex,
+            currentMatchKey: _currentMatchKey,
+          ),
+        ),
       ),
+    );
+  }
+
+  /// Build the JSON panel of the response tab, wired to the response search
+  Widget _buildResponseJsonPanel(dynamic jsonData) {
+    return JsonViewerPanel(
+      jsonData: jsonData,
+      title: 'Response Body',
+      matches: _responseMatches,
+      currentMatchIndex: _currentMatchIndex,
+      currentMatchKey: _currentMatchKey,
+      isSearching: _responseSearchController.text.isNotEmpty,
     );
   }
 
