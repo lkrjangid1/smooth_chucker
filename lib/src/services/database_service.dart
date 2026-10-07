@@ -26,7 +26,16 @@ class DatabaseService {
   static const String columnApiName = 'api_name';
   static const String columnSearchKeywords = 'search_keywords';
 
+  /// Upper bound on stored requests. Enforced on every insert, so the table
+  /// (and every read of it) stays small no matter how chatty the app is.
+  static int maxStoredRequests = 100;
+
   Database? _database;
+
+  /// This session's responses, newest first. Mirrors the table so inserts
+  /// never re-read it — reloading the whole table after every request is what
+  /// let a busy session grow to 70MB and OOM the Sqflite thread on one read.
+  final List<ApiResponse> _responses = [];
   final StreamController<List<ApiResponse>> _apiResponsesSubject =
       StreamController<List<ApiResponse>>.broadcast();
   static bool _supportsIsolates = false;
@@ -61,8 +70,6 @@ class DatabaseService {
 
       // Check if isolates are supported for database operations
       _supportsIsolates = !kIsWeb && !(Platform.isAndroid || Platform.isIOS);
-
-      await _loadApiResponses(); // Load initial data
     } catch (e) {
       _dbCompleter?.completeError(e);
       rethrow;
@@ -71,10 +78,13 @@ class DatabaseService {
     }
   }
 
-  /// Initialize database
+  /// Initialize database. Each app launch starts a new session: the previous
+  /// session's file is dropped outright (cheaper than DELETE + VACUUM and
+  /// never reads the old rows), so only the current session is ever stored.
   Future<Database> _initDatabase() async {
     final documentsDirectory = await getApplicationDocumentsDirectory();
     final path = join(documentsDirectory.path, _databaseName);
+    await deleteDatabase(path);
     return await openDatabase(
       path,
       version: _databaseVersion,
@@ -101,29 +111,13 @@ class DatabaseService {
   /// Stream of API responses
   Stream<List<ApiResponse>> get apiResponses => _apiResponsesSubject.stream;
 
-  /// Get all API responses
+  /// Get all API responses of the current session, newest first
   Future<List<ApiResponse>> getAllApiResponses() async {
     await init();
-    return await _loadApiResponses();
+    return List.unmodifiable(_responses);
   }
 
-  /// Load API responses from database
-  Future<List<ApiResponse>> _loadApiResponses() async {
-    try {
-      final db = _database!;
-      final maps = await db.query(
-        table,
-        orderBy: '$columnTimestamp DESC',
-      );
-
-      final responses = await compute(_parseApiResponses, maps);
-      _apiResponsesSubject.add(responses);
-      return responses;
-    } catch (e) {
-      debugPrint('Error loading API responses: $e');
-      return [];
-    }
-  }
+  void _emit() => _apiResponsesSubject.add(List.unmodifiable(_responses));
 
   /// Parse API responses in isolate
   static List<ApiResponse> _parseApiResponses(List<Map<String, dynamic>> maps) {
@@ -150,7 +144,22 @@ class DatabaseService {
       await _addApiResponseDirect(response);
     }
 
-    await _loadApiResponses(); // Reload data after insert
+    _responses.insert(0, response);
+    await trimToMax();
+    _emit();
+  }
+
+  /// Drops everything beyond [maxStoredRequests], in memory and in the table.
+  Future<void> trimToMax() async {
+    await init();
+    if (_responses.length > maxStoredRequests) {
+      _responses.removeRange(maxStoredRequests, _responses.length);
+    }
+    await _database!.rawDelete(
+      'DELETE FROM $table WHERE $columnId NOT IN '
+      '(SELECT $columnId FROM $table ORDER BY $columnId DESC LIMIT ?)',
+      [maxStoredRequests],
+    );
   }
 
   /// Add API response directly without using isolates (for mobile platforms)
@@ -308,6 +317,7 @@ class DatabaseService {
         where: whereClause,
         whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
         orderBy: '$columnTimestamp DESC',
+        limit: maxStoredRequests,
       );
 
       return await compute(_parseApiResponses, maps);
@@ -332,6 +342,7 @@ class DatabaseService {
       _ApiResponseSearchParams(
         sendPort: receivePort.sendPort,
         dbPath: _database!.path,
+        limit: maxStoredRequests,
         searchTerm: searchTerm,
         apiName: apiName,
         method: method,
@@ -397,6 +408,7 @@ class DatabaseService {
         where: whereClause,
         whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
         orderBy: '$columnTimestamp DESC',
+        limit: params.limit,
       );
 
       await db.close();
@@ -413,7 +425,8 @@ class DatabaseService {
   Future<void> deleteAllApiResponses() async {
     await init();
     await _database!.delete(table);
-    await _loadApiResponses(); // Reload data after delete
+    _responses.clear();
+    _emit();
   }
 
   /// Delete specific API response
@@ -429,7 +442,8 @@ class DatabaseService {
       whereArgs: [timestamp],
     );
 
-    await _loadApiResponses(); // Reload data after delete
+    _responses.removeWhere((r) => r.requestTime == response.requestTime);
+    _emit();
   }
 
   /// Close the database
@@ -457,6 +471,7 @@ class _ApiResponseInsertParams {
 class _ApiResponseSearchParams {
   final SendPort sendPort;
   final String dbPath;
+  final int limit;
   final String? searchTerm;
   final String? apiName;
   final String? method;
@@ -466,6 +481,7 @@ class _ApiResponseSearchParams {
   _ApiResponseSearchParams({
     required this.sendPort,
     required this.dbPath,
+    required this.limit,
     this.searchTerm,
     this.apiName,
     this.method,

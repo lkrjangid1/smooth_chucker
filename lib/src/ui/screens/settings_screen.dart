@@ -13,9 +13,9 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: SmoothChuckerProvider(),
-      child: SettingsScreenWidget(),
+    return ChangeNotifierProvider(
+      create: (_) => SmoothChuckerProvider(),
+      child: const SettingsScreenWidget(),
     );
   }
 }
@@ -255,7 +255,7 @@ class SettingsScreenWidget extends StatelessWidget {
       BuildContext context, SmoothChuckerProvider provider) {
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Clear All Data'),
           content: const Text(
@@ -264,14 +264,14 @@ class SettingsScreenWidget extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
               },
               child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () {
                 provider.deleteAllApiResponses();
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('All data has been cleared'),

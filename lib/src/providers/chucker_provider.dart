@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/api_response.dart';
@@ -28,9 +30,6 @@ class SmoothChuckerProvider extends ChangeNotifier {
 
   /// Notification duration in seconds
   int _notificationDuration = 5;
-
-  /// Maximum number of stored requests
-  int _maxStoredRequests = 100;
 
   /// Active tab index
   int _activeTabIndex = 0;
@@ -64,10 +63,25 @@ class SmoothChuckerProvider extends ChangeNotifier {
     _loadApiResponses();
 
     // Listen for changes to API responses
-    _databaseService.apiResponses.listen((responses) {
+    _subscription = _databaseService.apiResponses.listen((responses) {
       _apiResponses = responses;
       notifyListeners();
     });
+  }
+
+  StreamSubscription<List<ApiResponse>>? _subscription;
+  bool _disposed = false;
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _subscription?.cancel();
+    super.dispose();
   }
 
   /// Get all API responses
@@ -176,7 +190,7 @@ class SmoothChuckerProvider extends ChangeNotifier {
   int get notificationDuration => _notificationDuration;
 
   /// Get the maximum number of stored requests
-  int get maxStoredRequests => _maxStoredRequests;
+  int get maxStoredRequests => DatabaseService.maxStoredRequests;
 
   /// Get the active tab index
   int get activeTabIndex => _activeTabIndex;
@@ -261,10 +275,11 @@ class SmoothChuckerProvider extends ChangeNotifier {
   }
 
   /// Set the maximum number of stored requests
-  void setMaxStoredRequests(int count) {
-    _maxStoredRequests = count;
+  Future<void> setMaxStoredRequests(int count) async {
+    DatabaseService.maxStoredRequests = count;
     notifyListeners();
-    _trimOldRecords();
+    await _databaseService.trimToMax();
+    await _loadApiResponses();
   }
 
   /// Set the active tab index
@@ -320,16 +335,14 @@ class SmoothChuckerProvider extends ChangeNotifier {
 
   /// Delete all API responses
   Future<void> deleteAllApiResponses() async {
+    // The service re-emits the (now empty) list through the stream above.
     await _databaseService.deleteAllApiResponses();
-    _apiResponses = [];
-    notifyListeners();
   }
 
   /// Delete a specific API response
   Future<void> deleteApiResponse(ApiResponse response) async {
+    // The service re-emits the updated list through the stream above.
     await _databaseService.deleteApiResponse(response);
-    _apiResponses.removeWhere((r) => r == response);
-    notifyListeners();
   }
 
   /// Search API responses
@@ -347,25 +360,5 @@ class SmoothChuckerProvider extends ChangeNotifier {
       statusCode: statusCode,
       path: path,
     );
-  }
-
-  /// Helper method to remove old records if we exceed the maximum
-  Future<void> _trimOldRecords() async {
-    if (_apiResponses.length > _maxStoredRequests) {
-      // Sort by request time descending
-      _apiResponses.sort((a, b) => b.requestTime.compareTo(a.requestTime));
-
-      // Get the records to delete
-      final recordsToDelete = _apiResponses.sublist(_maxStoredRequests);
-
-      // Delete from database
-      for (final record in recordsToDelete) {
-        await _databaseService.deleteApiResponse(record);
-      }
-
-      // Update the list
-      _apiResponses = _apiResponses.sublist(0, _maxStoredRequests);
-      notifyListeners();
-    }
   }
 }

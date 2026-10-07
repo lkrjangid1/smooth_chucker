@@ -19,9 +19,11 @@ class ApiListScreen extends StatefulWidget {
 class _ApiListScreenState extends State<ApiListScreen> {
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: SmoothChuckerProvider(),
-      child: ApiListScreenWidget(),
+    // create: (not .value with a fresh instance) so a rebuild doesn't spawn
+    // a new provider + stream listener each time, and it's disposed on pop.
+    return ChangeNotifierProvider(
+      create: (_) => SmoothChuckerProvider(),
+      child: const ApiListScreenWidget(),
     );
   }
 }
@@ -405,9 +407,13 @@ class _ApiListScreenWidgetState extends State<ApiListScreenWidget>
 
   /// Show confirmation dialog for clearing all requests
   void _showClearConfirmationDialog() {
+    // Read the provider here: the dialog lives on the navigator's overlay,
+    // ABOVE this screen's ChangeNotifierProvider, so looking it up from the
+    // dialog's context threw ProviderNotFoundException and nothing was cleared.
+    final provider = context.read<SmoothChuckerProvider>();
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Clear All Requests'),
           content:
@@ -415,14 +421,14 @@ class _ApiListScreenWidgetState extends State<ApiListScreenWidget>
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
               },
               child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () {
-                context.read<SmoothChuckerProvider>().deleteAllApiResponses();
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
+                provider.deleteAllApiResponses();
               },
               child: const Text('Clear'),
             ),
